@@ -1,14 +1,14 @@
 FROM node:latest
 
-RUN apt update 
+RUN apt update \
  && apt install -y openjdk-8-jre
 
 COPY . /deploy
 
 WORKDIR /deploy
 
-RUN pushd server/bftools
- && chmod +x bfconvert bf.sh
+RUN pushd server/bftools \
+ && chmod +x bfconvert bf.sh \
  && popd
 
 RUN npm install
