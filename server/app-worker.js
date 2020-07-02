@@ -75,9 +75,11 @@ async function processMessage(params) {
                 Key: outputS3Key,
             }).promise();
 
+            // create signed url which expires in 2 weeks
             const url = s3.getSignedUrl('getObject', {
                 Bucket: config.s3.bucket,
-                Key: outputS3Key
+                Key: outputS3Key,
+                Expires: 60 * 60 * 24 * 14, 
             });
             signedUrls.push({outputFileName, url});
             logger.info(`Generated URL: ${url}`);
