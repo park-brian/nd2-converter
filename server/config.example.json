@@ -1,0 +1,30 @@
+{
+    "port": 9000,
+    "logs": {
+        "folder": "logs",
+        "level": "debug"
+    },
+    "uploads": {
+        "folder": "uploads"
+    },
+    "aws": {
+        "region:": "us-east-1",
+        "accessKeyId:": "",
+        "secretAccessKey:": ""
+    },
+    "queue": {
+        "url": "",
+        "errorUrl": "",
+        "visibilityTimeout": 60,
+        "pollInterval": 60
+    },
+    "email": {
+        "admin": "admin@example.com",
+        "sender": "noreply@example.com"
+    },
+    "s3": {
+        "bucket": "bucketName",
+        "inputPrefix": "path/to/input/",
+        "outputPrefix": "path/to/output/"
+    }
+}
