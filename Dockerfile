@@ -7,9 +7,7 @@ COPY . /deploy
 
 WORKDIR /deploy
 
-RUN pushd server/bftools \
- && chmod +x bfconvert bf.sh \
- && popd
+RUN chmod +x server/bftools/*
 
 RUN npm install
 
