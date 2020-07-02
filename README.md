@@ -1,10 +1,8 @@
-## Express/React SPA Template
+## Convert .nd2 images to pyramidal .ome.tif images
 
 #### Getting Started
 
 ```bash
-npm install
-cd client
 npm install
 ```
 
@@ -21,9 +19,7 @@ npm start
 # Server runs on port 9000 by default
 ```
 
-#### Start Client
+#### Start Worker
 ```bash
-cd client
-npm start
-# Client runs on port 3000 by default
+npm run start-worker
 ```
