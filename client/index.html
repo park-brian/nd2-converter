@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert .nd2 to .ome.tiff</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/style.css">
+    <link rel="shortcut icon" href="assets/favicon.ico" type="image/vnd.microsoft.icon" />
+</head>
+
+<body>
+    <main class="container my-5">
+        <form class="card shadow" action="submit" enctype="multipart/form-data" method="post" onsubmit-modal="#modal">
+            <div class="card-header bg-primary text-white">
+                <h1 class="h5 mb-0">Convert .nd2 images to pyramidal .ome.tifs</h1>
+            </div>
+            <div class="card-body">
+
+                <div class="form-group mb-4">
+                    <label>ND2 Images</label>
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" id="inputFiles" name="inputFiles"
+                            aria-describedby="inputFilesHelp"  accept=".nd2" multiple required>
+                        <label class="custom-file-label" for="inputFiles">No images selected</label>
+                    </div>
+                    <small id="inputFilesHelp" class="form-text text-muted">
+                        Select image files to convert.
+                    </small>
+                </div>
+
+                <div class="form-group mb-4">
+                    <label for="tileSizeX">Tile Size X</label>
+                    <input type="number" class="form-control" id="tileSizeX" name="tileSizeX"
+                        aria-describedby="tileSizeXHelp" value="512" min="0" step="1" required>
+                    <small id="tileSizeXHelp" class="form-text text-muted">
+                        All images larger than 4096×4096 will be saved as a set of tiles if the output format supports
+                        doing so. The width in pixels of each tile. Values between 128 and 4096 only.
+                    </small>
+                </div>
+
+                <div class="form-group mb-4">
+                    <label for="tileSizeY">Tile Size Y</label>
+                    <input type="number" class="form-control" id="tileSizeY" name="tileSizeY"
+                        aria-describedby="tileSizeYHelp" value="512" min="0" step="1" required>
+                    <small id="tileSizeYHelp" class="form-text text-muted">
+                        All images larger than 4096×4096 will be saved as a set of tiles if the output format supports
+                        doing so. The height in pixels of each tile. Values between 128 and 4096 only.
+                    </small>
+                </div>
+
+                <div class="form-group mb-4">
+                    <label for="pyramidResolutions">Pyramid Resolutions</label>
+                    <input type="number" class="form-control" id="pyramidResolutions" name="pyramidResolutions"
+                        aria-describedby="pyramidResolutionsHelp" value="4" min="0" step="1" required>
+                    <small id="pyramidResolutionsHelp" class="form-text text-muted" required>
+                        Sets the number of expected resolutions in the output file for each series. If the target number
+                        of
+                        resolutions is greater than the actual number of sub-resolutions present in the input file,
+                        additional
+                        pyramidal levels will be calculated using the downsampling factor specified by pyramid-scale.
+                    </small>
+                </div>
+
+                <div class="form-group mb-4">
+                    <label for="pyramidScale">Pyramid Scale</label>
+                    <input type="number" class="form-control" id="pyramidScale" name="pyramidScale"
+                        aria-describedby="pyramidScaleHelp" value="3" min="0" step="1" required>
+                    <small id="pyramidScaleHelp" class="form-text text-muted" required>
+                        If the target number of resolutions is greater than the actual number of sub-resolutions present
+                        in the input file, additional pyramidal levels will be calculated using the downsampling factor
+                        specified by the pyramid-scale option.
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email address</label>
+                    <input type="email" name="email" class="form-control" id="email" aria-describedby="emailHelp"
+                        required>
+                    <small id="emailHelp" class="form-text text-muted">
+                        Specify the email address at which you wish to receive your results.
+                    </small>
+                </div>
+
+            </div>
+
+            <div class="card-footer bg-white border-0">
+                <button type="submit" class="btn btn-primary btn-block font-weight-bold">Submit</button>
+            </div>
+        </form>
+
+        <!-- Modal -->
+        <div class="modal fade" id="modal" tabindex="-1" role="dialog" aria-labelledby="modal"
+            aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="h5 modal-title" id="modalTitle"></h2>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body" id="modalBody"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/bs-custom-file-input.min.js"></script>
+    <script src="assets/script.js"></script>
+</body>
+
+</html>

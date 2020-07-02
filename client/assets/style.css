@@ -1,0 +1,17 @@
+.bg-primary,
+.btn-primary {
+    background-color: #185394 !important;
+}
+
+.btn-primary:active,
+.btn-primary:hover {
+    background-color: #134173 !important;
+}
+
+.form-group > label {
+    font-weight: 500;
+}
+
+.text-muted {
+    color: #595959 !important;
+}
