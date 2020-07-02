@@ -8,9 +8,9 @@
         "folder": "uploads"
     },
     "aws": {
-        "region:": "us-east-1",
-        "accessKeyId:": "",
-        "secretAccessKey:": ""
+        "region": "us-east-1",
+        "accessKeyId": "",
+        "secretAccessKey": ""
     },
     "queue": {
         "url": "",
