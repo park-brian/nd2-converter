@@ -79,7 +79,7 @@ app.post('/submit', async (request, response) => {
                 bucket: s3Object.Bucket,
                 key: s3Object.Key,
             });
-            await s3.putObject(s3Object).promise();
+            await s3.upload(s3Object).promise();
             await fs.promises.unlink(file.path);
         }
 

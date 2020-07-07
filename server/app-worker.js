@@ -83,7 +83,7 @@ async function processMessage(params) {
             });
 
             logger.info(`Uploading file to S3: ${outputS3Key}`);
-            await s3.putObject({
+            await s3.upload({
                 Body: fs.createReadStream(outputFilePath),
                 Bucket: config.s3.bucket,
                 Key: outputS3Key,
