@@ -1,4 +1,4 @@
-const fs = require('fs').promises;
+const fs = require('fs');
 const path = require('path');
 const AWS = require('aws-sdk');
 const nodemailer = require('nodemailer');
@@ -14,16 +14,26 @@ const convert = require('./convert');
     }
 
     // create required folders 
-    const requiredFolders = [
-        config.logs.folder, 
-        config.uploads.folder,
-    ];
-    for (let folder of requiredFolders) {
-        await fs.mkdir(folder, {recursive: true});
+    for (let folder of [config.logs.folder, config.uploads.folder]) {
+        fs.mkdirSync(folder, {recursive: true});
     }
 
     receiveMessage();
-})()
+})();
+
+/**
+ * Writes the contents of a stream to a file and resolves once complete
+ * @param {*} readStream 
+ * @param {*} filePath 
+ */
+function streamToFile(readStream, filePath) {
+    return new Promise((resolve, reject) => {
+        const file = fs.createWriteStream(filePath);
+        const stream = readStream.pipe(file);
+        stream.on('error', error => reject(error));
+        stream.on('close', _ => resolve());
+    });
+}
 
 /**
  * Processes a message and sends emails when finished
@@ -36,7 +46,9 @@ async function processMessage(params) {
     });
 
     try {
-        logger.info(`Processing: ${JSON.stringify(params, null, 2)}`);
+        logger.info(`Processing job: ${params.id}`);
+        logger.info(`Parameters: ${JSON.stringify(params, null, 2)}`);
+
         const { id, tileSizeX, tileSizeY, pyramidResolutions, pyramidScale, files } = params;
         let signedUrls = [];
         
@@ -49,14 +61,16 @@ async function processMessage(params) {
             let inputFilePath = path.resolve(processingFolder, inputFileName);
             let outputFilePath = path.resolve(processingFolder, outputFileName);
             let outputS3Key = `${config.s3.outputPrefix}${id}/${outputFileName}`;
-            await fs.mkdir(processingFolder, {recursive: true});
+            fs.mkdirSync(processingFolder, {recursive: true});
 
             logger.info(`Downloading file: ${key}`);
-            const s3Object = await s3.getObject({
-                Bucket: bucket,
-                Key: key
-            }).promise();
-            await fs.writeFile(inputFilePath, s3Object.Body);
+            await streamToFile(
+                s3.getObject({
+                    Bucket: bucket,
+                    Key: key
+                }).createReadStream(), 
+                inputFilePath
+            );
 
             logger.info(`Processing file: ${inputFileName}`);
             convert({
@@ -70,10 +84,15 @@ async function processMessage(params) {
 
             logger.info(`Uploading file to S3: ${outputS3Key}`);
             await s3.putObject({
-                Body: await fs.readFile(outputFilePath),
+                Body: fs.createReadStream(outputFilePath),
                 Bucket: config.s3.bucket,
                 Key: outputS3Key,
             }).promise();
+
+            // remove local files
+            fs.unlinkSync(inputFilePath);
+            fs.unlinkSync(outputFilePath);
+            fs.rmdirSync(processingFolder, {recursive: true});
 
             // create signed url which expires in 2 weeks
             const url = s3.getSignedUrl('getObject', {
@@ -99,6 +118,9 @@ async function processMessage(params) {
             subject: 'Conversion Results',
             html: await readTemplate(__dirname + '/templates/user-success-email.html', templateData),
         });
+
+        logger.info(`Done with job: ${params.id}`);
+
         return true;
     } catch (e) {
         // catch exceptions related to conversion (assume s3/ses configuration is valid)
@@ -141,7 +163,7 @@ async function processMessage(params) {
  * @param {object} data 
  */
 async function readTemplate(filePath, data) {
-    const template = await fs.readFile(path.resolve(filePath));
+    const template = await fs.promises.readFile(path.resolve(filePath));
   
     // replace {tokens} with data values or removes them if not found
     return String(template).replace(

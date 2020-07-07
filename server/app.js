@@ -1,4 +1,4 @@
-const fs = require('fs').promises;
+const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
 const AWS = require('aws-sdk');
@@ -9,7 +9,7 @@ const logger = require('./utils/logger');
 const form = formidable({ 
     multiples: true, 
     uploadDir: config.uploads.folder,
-    maxFileSize: 2 * 1024**3, // 2 gb
+    maxFileSize: 100 * 1024**3, // 100 gb
 });
 
 if (config.aws) {
@@ -56,6 +56,8 @@ app.post('/submit', async (request, response) => {
         const sqs = new AWS.SQS();
 
         let params = request.form;
+
+        // ensure request.files is an array
         let files = Array.isArray(request.files.inputFiles) 
             ? request.files.inputFiles
             : [request.files.inputFiles];
@@ -71,18 +73,18 @@ app.post('/submit', async (request, response) => {
             let s3Object = {
                 Bucket: config.s3.bucket,
                 Key: `${config.s3.inputPrefix}${params.id}/${file.name}`,
-                Body: await fs.readFile(file.path),
+                Body: fs.createReadStream(file.path),
             };
             params.files.push({
                 bucket: s3Object.Bucket,
                 key: s3Object.Key,
             });
             await s3.putObject(s3Object).promise();
+            await fs.promises.unlink(file.path);
         }
 
         console.log(params);
 
-        // maximum message size is 256 KB
         const results = await sqs.sendMessage({
             QueueUrl: config.queue.url,
             MessageBody: JSON.stringify(params),
@@ -102,11 +104,7 @@ app.listen(config.port, async () => {
     logger.info(`Application is running on port: ${config.port}`)
 
     // create required folders 
-    const requiredFolders = [
-        config.logs.folder, 
-        config.uploads.folder,
-    ];
-    for (let folder of requiredFolders) {
-        await fs.mkdir(folder, {recursive: true});
+    for (let folder of [config.logs.folder, config.uploads.folder]) {
+        fs.mkdirSync(folder, {recursive: true});
     }
 });
