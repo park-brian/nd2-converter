@@ -104,11 +104,8 @@ async function processMessage(message) {
         const processingFolder = path.resolve(config.uploads.folder, params.id);
         const inputFilePath = path.resolve(processingFolder, inputFileName);
         const outputFilePath = path.resolve(processingFolder, outputFileName);
-        // const outputS3Key = `${config.s3.outputPrefix}${params.id}/${outputFileName}`;
-        let outputPath = path.dirname(key.replace(config.s3.inputPrefix, '')); // dirname strips ending slash
-        outputPath = outputPath.replace(/^(\.*\/*)+/, ''); // strip leading relative directory paths
-        if (outputPath.length) outputPath += '/'; // add trailing slash if needed
-        const outputS3Key = `${config.s3.outputPrefix}${outputPath}${outputFileName}`;
+        const outputPath = key.replace(config.s3.inputPrefix, config.s3.outputPrefix);
+        const outputS3Key = `${outputPath}${outputFileName}`;
         fs.mkdirSync(processingFolder, {recursive: true});
         
         // write s3 object to local file
