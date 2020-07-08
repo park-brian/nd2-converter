@@ -256,7 +256,7 @@ async function receiveMessage() {
         logger.error(e);
     } finally {
         // schedule receiving next message
-        setTimeout(receiveMessage, config.queue.pollInterval);
+        setTimeout(receiveMessage, config.queue.pollInterval * 1000);
     }
 }
 
