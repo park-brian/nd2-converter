@@ -1,4 +1,11 @@
 $(function () {
+    // create shortcut for showing modals
+    $.fn.showModal = function(title, body) {
+        $(this).find('.modal-title').text(title);
+        $(this).find('.modal-body').text(body);
+        $(this).modal('show');
+    }
+
     // initialize custom bootstrap file inputs
     bsCustomFileInput.init();
 
@@ -6,17 +13,9 @@ $(function () {
     $('[onsubmit-modal]').submit(function (ev) {
         ev.preventDefault();
         var form = ev.target;
-        var modal = $(form.getAttribute('onsubmit-modal'));
-        modal.show = function(title, body) {
-            modal.find('#modalTitle').text(title);
-            modal.find('#modalBody').text(body);
-            modal.modal('show');
-        }
-        modal.show(
-            'Please Wait',
-            'Uploading files to s3 and sending job to queue...'
-        );
-
+        var $submitModal = $(form.getAttribute('onsubmit-modal'));
+        $submitModal.showModal('Please Wait', 'Submitting request...');
+        
         $.ajax({
             type: 'POST',
             url: form.action,
@@ -24,10 +23,10 @@ $(function () {
             contentType: false,
             processData: false,
             success: function(data) {
-                modal.show('Request Submitted', data);
+                $submitModal.showModal('Request Submitted', data);
             },
             error: function(jqXHR) {
-                modal.show('Error', jqXHR.responseText);
+                $submitModal.showModal('Error', jqXHR.responseText);
             }
           });
     });
