@@ -24,7 +24,7 @@ fi
 if [ -z "$BF_MAX_MEM" ]
 then
   # Set a reasonable default max heap size.
-  BF_MAX_MEM="512m"
+  BF_MAX_MEM="4g"
 fi
 BF_FLAGS="$BF_FLAGS -Xmx$BF_MAX_MEM"
 

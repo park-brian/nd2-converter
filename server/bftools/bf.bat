@@ -18,7 +18,7 @@ if "%BF_PROG%" == "" (
 rem Set the max heap size.
 if "%BF_MAX_MEM%" == "" (
   rem Set a reasonable default max heap size.
-  set BF_MAX_MEM=2048m
+  set BF_MAX_MEM=4g
 )
 set BF_FLAGS=%BF_FLAGS% -Xmx%BF_MAX_MEM%
 
