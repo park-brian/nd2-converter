@@ -20,13 +20,7 @@ if (config.aws) {
 const app = express();
 
 // serve public folder
-app.use(express.static('client'));
-
-// log requests
-app.use((request, response, next) => {
-    logger.info([request.url, JSON.stringify(request.form)].join(' '));
-    next();
-});
+app.use(express.static(config.server.static));
 
 // parse multipart/form-data files
 app.use((request, response, next) => {
@@ -42,6 +36,12 @@ app.use((request, response, next) => {
     });
 });
 
+// log requests
+app.use((request, response, next) => {
+    logger.info([request.url, JSON.stringify(request.form)].join(' '));
+    next();
+});
+
 // healthcheck route
 app.get('/ping', (request, response) => {
     response.json(true);
@@ -50,49 +50,23 @@ app.get('/ping', (request, response) => {
 // handle queue submission
 app.post('/submit', async (request, response) => {
     try {
-        // update aws configuration if all keys are supplied, otherwise
-        // fall back to default credentials/IAM role
+        // if needed, specify alternative region or credentials
         const s3 = new AWS.S3();
-        const sqs = new AWS.SQS();
+        const id = crypto.randomBytes(16).toString('hex');
+        const { email, tileSizeX, tileSizeY, pyramidResolutions, pyramidScale } = request.form;
+        const { inputFile } = request.files;
 
-        let params = request.form;
-
-        // ensure request.files is an array
-        let files = Array.isArray(request.files.inputFiles) 
-            ? request.files.inputFiles
-            : [request.files.inputFiles];
-        
-        console.log(request.form);
-        console.log(request.files);
-
-        params.id = crypto.randomBytes(16).toString('hex');
-        params.originalTimestamp = new Date().getTime();
-        params.files = [];
-        
-        for (let file of files) {
-            let s3Object = {
-                Bucket: config.s3.bucket,
-                Key: `${config.s3.inputPrefix}${params.id}/${file.name}`,
-                Body: fs.createReadStream(file.path),
-            };
-            params.files.push({
-                bucket: s3Object.Bucket,
-                key: s3Object.Key,
-            });
-            await s3.upload(s3Object).promise();
-            await fs.promises.unlink(file.path);
-        }
-
-        console.log(params);
-
-        const results = await sqs.sendMessage({
-            QueueUrl: config.queue.url,
-            MessageBody: JSON.stringify(params),
+        // use metadata to store conversion parameters
+        await s3.upload({
+            Bucket: config.s3.bucket,
+            Key: `${config.s3.inputPrefix}${id}/${inputFile.name}`,
+            Body: fs.createReadStream(inputFile.path),
+            Metadata: { id, email, tileSizeX, tileSizeY, pyramidResolutions, pyramidScale }
         }).promise();
 
-        logger.info(`Queued message: ${results.MessageId}`);
+        // clean up input file
+        await fs.promises.unlink(inputFile.path);
         response.end('Your request has been submitted and will be processed shortly. Results will be sent to the specified email.');
-
     } catch(error) {
         logger.error(error);
         response.status(500).end('Your request could not be processed due to an internal error.');
@@ -100,11 +74,11 @@ app.post('/submit', async (request, response) => {
 });
 
 // start application
-app.listen(config.port, async () => {
-    logger.info(`Application is running on port: ${config.port}`)
+app.listen(config.server.port, async () => {
+    logger.info(`Application is running on port: ${config.server.port}`)
 
     // create required folders 
     for (let folder of [config.logs.folder, config.uploads.folder]) {
         fs.mkdirSync(folder, {recursive: true});
     }
-});
+}).setTimeout(1000 * 60 * 60 * 6); // 6 hour request timeout
