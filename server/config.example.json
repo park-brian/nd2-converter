@@ -1,5 +1,8 @@
 {
-    "port": 9000,
+    "server": {
+        "port": 10000,
+        "static": "client"
+    },
     "logs": {
         "folder": "logs",
         "level": "debug"
