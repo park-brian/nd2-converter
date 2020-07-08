@@ -104,7 +104,7 @@ async function processMessage(message) {
         const processingFolder = path.resolve(config.uploads.folder, params.id);
         const inputFilePath = path.resolve(processingFolder, inputFileName);
         const outputFilePath = path.resolve(processingFolder, outputFileName);
-        const outputPath = key.replace(config.s3.inputPrefix, config.s3.outputPrefix);
+        const outputPath = path.dirname(key.replace(config.s3.inputPrefix, config.s3.outputPrefix));
         const outputS3Key = `${outputPath}${outputFileName}`;
         fs.mkdirSync(processingFolder, {recursive: true});
         
