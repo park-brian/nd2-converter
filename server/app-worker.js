@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const AWS = require('aws-sdk');
 const nodemailer = require('nodemailer');
 const config = require('./config.json');
@@ -22,6 +23,21 @@ const convert = require('./convert');
 })();
 
 /**
+ * Reads a template, substituting {tokens} with data values
+ * @param {string} filepath 
+ * @param {object} data 
+ */
+async function readTemplate(filePath, data) {
+    const template = await fs.promises.readFile(path.resolve(filePath));
+  
+    // replace {tokens} with data values or removes them if not found
+    return String(template).replace(
+      /{[^{}]+}/g,
+      key => data[key.replace(/[{}]+/g, '')] || ''
+    );
+}
+
+/**
  * Writes the contents of a stream to a file and resolves once complete
  * @param {*} readStream 
  * @param {*} filePath 
@@ -39,90 +55,119 @@ function streamToFile(readStream, filePath) {
  * Processes a message and sends emails when finished
  * @param {object} params 
  */
-async function processMessage(params) {
+async function processMessage(message) {
+    // validate message
+    if (!message ||
+        !message.Records || 
+        !message.Records.length || 
+        !message.Records[0].eventName.includes('ObjectCreated') || 
+        !message.Records[0].s3) {
+        logger.info(`Invalid message`);
+        logger.info(message)
+        return false;
+    }
+
+    let params;
     const s3 = new AWS.S3();
     const email = nodemailer.createTransport({
         SES: new AWS.SES()
     });
 
     try {
-        logger.info(`Processing job: ${params.id}`);
-        logger.info(`Parameters: ${JSON.stringify(params, null, 2)}`);
+        logger.info(`Processing S3 Event: ${JSON.stringify(message, null, 2)}`);
+        const [record] = message.Records;
+        const bucket = record.s3.bucket.name;
+        const key = decodeURIComponent(record.s3.object.key).replace(/\+/g, ' ');
+        const startTime = new Date().getTime();
 
-        const { id, tileSizeX, tileSizeY, pyramidResolutions, pyramidScale, files } = params;
-        let signedUrls = [];
-        
-        for (let {bucket, key} of files) {
-
-            let inputFileName = path.basename(key);
-            let outputFileName = path.basename(key, path.extname(key)) + '.ome.tif';
-
-            let processingFolder = path.resolve(config.uploads.folder, id);
-            let inputFilePath = path.resolve(processingFolder, inputFileName);
-            let outputFilePath = path.resolve(processingFolder, outputFileName);
-            let outputS3Key = `${config.s3.outputPrefix}${id}/${outputFileName}`;
-            fs.mkdirSync(processingFolder, {recursive: true});
-
-            logger.info(`Downloading file: ${key}`);
-            await streamToFile(
-                s3.getObject({
-                    Bucket: bucket,
-                    Key: key
-                }).createReadStream(), 
-                inputFilePath
-            );
-
-            logger.info(`Processing file: ${inputFileName}`);
-            convert({
-                inputFile: inputFilePath,
-                outputFile: outputFilePath,
-                tileSizeX,
-                tileSizeY,
-                pyramidResolutions,
-                pyramidScale,
-            });
-
-            logger.info(`Uploading file to S3: ${outputS3Key}`);
-            await s3.upload({
-                Body: fs.createReadStream(outputFilePath),
-                Bucket: config.s3.bucket,
-                Key: outputS3Key,
-            }).promise();
-
-            // remove local files
-            fs.unlinkSync(inputFilePath);
-            fs.unlinkSync(outputFilePath);
-            fs.rmdirSync(processingFolder, {recursive: true});
-
-            // create signed url which expires in 2 weeks
-            const url = s3.getSignedUrl('getObject', {
-                Bucket: config.s3.bucket,
-                Key: outputS3Key,
-                Expires: 60 * 60 * 24 * 14, 
-            });
-            signedUrls.push({outputFileName, url});
-            logger.info(`Generated URL: ${url}`);
-        }
-        
-        // specify template variables
-        const templateData = {
-            originalTimestamp: new Date(params.originalTimestamp).toLocaleString(),
-            resultsUrls: signedUrls.map(s => `<li><a href="${s.url}">${s.outputFileName}</a></li>`).join(''),
+        // fetch s3 object metadata
+        logger.info(`Downloading file: ${key}`);
+        const s3Object = await s3.headObject({
+            Bucket: bucket,
+            Key: key
+        }).promise();
+        params = {
+            id: crypto.randomBytes(16).toString('hex'),
+            tileSizeX: 512,
+            tileSizeY: 512,
+            pyramidResolutions: 4,
+            pyramidScale: 3,
+            timestamp: record.eventTime,
+            ...s3Object.Metadata,
         };
 
-        // send user success email
-        logger.info(`Sending user success email`);
-        const userEmailResults = await email.sendMail({
-            from: config.email.sender,
-            to: params.email,
-            subject: 'Conversion Results',
-            html: await readTemplate(__dirname + '/templates/user-success-email.html', templateData),
+        console.log(params);
+
+        const targetFormat = '.ome.tiff';
+        const inputFileName = path.basename(key);
+        const outputFileName = path.basename(key, path.extname(key)) + targetFormat;
+        const processingFolder = path.resolve(config.uploads.folder, params.id);
+        const inputFilePath = path.resolve(processingFolder, inputFileName);
+        const outputFilePath = path.resolve(processingFolder, outputFileName);
+        // const outputS3Key = `${config.s3.outputPrefix}${params.id}/${outputFileName}`;
+        let outputPath = path.dirname(key.replace(config.s3.inputPrefix, '')); // dirname strips ending slash
+        outputPath = outputPath.replace(/^(\.*\/*)+/, '') + '/';    // strip leading relative directory paths
+        const outputS3Key = `${config.s3.outputPrefix}${outputPath}${outputFileName}`;
+        fs.mkdirSync(processingFolder, {recursive: true});
+        
+        // write s3 object to local file
+        await streamToFile(
+            s3.getObject({
+                Bucket: bucket,
+                Key: key
+            }).createReadStream(), 
+            inputFilePath
+        );
+
+        logger.info(`Processing file: ${inputFileName}`);
+        convert({
+            inputFile: inputFilePath,
+            outputFile: outputFilePath,
+            tileSizeX: params.tileSizeX,
+            tileSizeY: params.tileSizeY,
+            pyramidResolutions: params.pyramidResolutions,
+            pyramidScale: params.pyramidScale,
         });
 
-        logger.info(`Done with job: ${params.id}`);
+        logger.info(`Uploading file to S3: ${outputS3Key}`);
+        await s3.upload({
+            Body: fs.createReadStream(outputFilePath),
+            Bucket: config.s3.bucket,
+            Key: outputS3Key,
+        }).promise();
 
+        // remove local files
+        await fs.promises.rmdir(processingFolder, {recursive: true});
+
+        // create signed url which expires in 2 weeks
+        const url = s3.getSignedUrl('getObject', {
+            Bucket: config.s3.bucket,
+            Key: outputS3Key,
+            Expires: 60 * 60 * 24 * 14, 
+        });
+        logger.info(`Generated URL: ${url}`);
+
+        if (params.email) {
+            // specify template variables
+            const templateData = {
+                originalTimestamp: params.timestamp,
+                resultsUrls: [{outputFileName, url}].map(s => `<li><a href="${s.url}">${s.outputFileName}</a></li>`).join(''),
+            };
+            // send user success email
+            logger.info(`Sending user success email`);
+            const userEmailResults = await email.sendMail({
+                from: config.email.sender,
+                to: params.email,
+                subject: 'Conversion Results',
+                html: await readTemplate(__dirname + '/templates/user-success-email.html', templateData),
+            });
+        }
+
+        const elapsedTime = new Date().getTime() - startTime;
+        logger.info(`Finished job (${params.id}) in ${elapsedTime / 1000}s`);
         return true;
     } catch (e) {
+        console.log(e);
         // catch exceptions related to conversion (assume s3/ses configuration is valid)
         logger.error(e);
 
@@ -130,7 +175,7 @@ async function processMessage(params) {
         const templateData = {
             id: params.id,
             parameters: JSON.stringify(params, null, 4),
-            originalTimestamp: new Date(params.originalTimestamp).toLocaleString(),
+            originalTimestamp: params.timestamp,
             exception: e.toString(),
             supportEmail: config.email.admin,
         };
@@ -145,31 +190,18 @@ async function processMessage(params) {
         });
 
         // send user error email
-        logger.info(`Sending user error email`);
-        const userEmailResults = await email.sendMail({
-            from: config.email.sender,
-            to: params.email,
-            subject: 'Conversion Error',
-            html: await readTemplate(__dirname + '/templates/user-failure-email.html', templateData),
-        });
+        if (params.email) {
+            logger.info(`Sending user error email`);
+            const userEmailResults = await email.sendMail({
+                from: config.email.sender,
+                to: params.email,
+                subject: 'Conversion Error',
+                html: await readTemplate(__dirname + '/templates/user-failure-email.html', templateData),
+            });
+        }
 
         return false;
     }
-}
-
-/**
- * Reads a template, substituting {tokens} with data values
- * @param {string} filepath 
- * @param {object} data 
- */
-async function readTemplate(filePath, data) {
-    const template = await fs.promises.readFile(path.resolve(filePath));
-  
-    // replace {tokens} with data values or removes them if not found
-    return String(template).replace(
-      /{[^{}]+}/g,
-      key => data[key.replace(/[{}]+/g, '')] || ''
-    );
 }
 
 /**
