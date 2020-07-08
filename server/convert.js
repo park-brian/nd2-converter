@@ -14,5 +14,10 @@ function convert(options) {
         '-pyramid-scale', options.pyramidScale,
         options.inputFile,
         options.outputFile
-    ]);
+    ], {
+        env: {
+            ...process.env,
+            BF_MAX_MEM: '4g',
+        }
+    });
 }
