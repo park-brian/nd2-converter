@@ -88,6 +88,7 @@ async function processMessage(message) {
         }).promise();
         params = {
             id: metadata.id || crypto.randomBytes(16).toString('hex'),
+            email: metadata.email,
             tileSizeX: metadata.tile_size_x || 512,
             tileSizeY: metadata.tile_size_y || 512,
             pyramidResolutions: metadata.pyramid_resolutions || 4,
