@@ -53,15 +53,22 @@ app.post('/submit', async (request, response) => {
         // if needed, specify alternative region or credentials
         const s3 = new AWS.S3();
         const id = crypto.randomBytes(16).toString('hex');
-        const { email, tileSizeX, tileSizeY, pyramidResolutions, pyramidScale } = request.form;
         const { inputFile } = request.files;
 
         // use metadata to store conversion parameters
+        // since metadata keys are converted to lowercase, do not use camelcase
         await s3.upload({
             Bucket: config.s3.bucket,
             Key: `${config.s3.inputPrefix}${id}/${inputFile.name}`,
             Body: fs.createReadStream(inputFile.path),
-            Metadata: { id, email, tileSizeX, tileSizeY, pyramidResolutions, pyramidScale }
+            Metadata: { 
+                id, 
+                email: request.form.email, 
+                tile_size_x: request.form.tileSizeX, 
+                tile_size_y: request.form.tileSizeY, 
+                pyramid_resolutions: request.form.pyramidResolutions, 
+                pyramid_Scale: request.form.pyramidScale 
+            }
         }).promise();
 
         // clean up input file

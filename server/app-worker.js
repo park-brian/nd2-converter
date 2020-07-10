@@ -80,20 +80,19 @@ async function processMessage(message) {
         const key = decodeURIComponent(record.s3.object.key).replace(/\+/g, ' ');
         const startTime = new Date().getTime();
 
-        // fetch s3 object metadata
+        // fetch s3 object metadata (all metadata keys are lowercase)
         logger.info(`Downloading file: ${key}`);
-        const s3Object = await s3.headObject({
+        const { Metadata : metadata } = await s3.headObject({
             Bucket: bucket,
             Key: key
         }).promise();
         params = {
-            id: crypto.randomBytes(16).toString('hex'),
-            tileSizeX: 512,
-            tileSizeY: 512,
-            pyramidResolutions: 4,
-            pyramidScale: 3,
-            timestamp: record.eventTime,
-            ...s3Object.Metadata,
+            id: metadata.id || crypto.randomBytes(16).toString('hex'),
+            tileSizeX: metadata.tile_size_x || 512,
+            tileSizeY: metadata.tile_size_y || 512,
+            pyramidResolutions: metadata.pyramid_resolutions || 4,
+            pyramidScale: metadata.pyramid_scale || 3,
+            timestamp: record.eventTime
         };
 
         console.log(params);
@@ -175,6 +174,7 @@ async function processMessage(message) {
             parameters: JSON.stringify(params, null, 4),
             originalTimestamp: params.timestamp,
             exception: e.toString(),
+            processOutput: e.stdout ? e.stdout.toString() : null,
             supportEmail: config.email.admin,
         };
 
