@@ -108,16 +108,16 @@ async function processMessage(message) {
 
         console.log(params);
         logItem = {
-            id: {S: params.id},
-            email: {S: params.email},
+            id: {S: String(params.id)},
+            email: {S: String(params.email)},
             tileSizeX: {S: String(params.tileSizeX)},
             tileSizeY: {S: String(params.tileSizeY)},
             pyramidResolutions: {S: String(params.pyramidResolutions)},
             pyramidScale: {S: String(params.pyramidScale)},
-            uploadedAt: {S: record.eventTime},
-            bucket: {S: config.s3.bucket},
-            inputKey: {S: key},
-            outputKey: {S: outputS3Key},
+            uploadedAt: {S: String(record.eventTime)},
+            bucket: {S: String(config.s3.bucket)},
+            inputKey: {S: String(key)},
+            outputKey: {S: String(outputS3Key)},
             fileSize: {N: String(record.s3.object.size)},
             status: {S: 'In Progress'},
         };
@@ -225,7 +225,7 @@ async function processMessage(message) {
                 status: {S: 'Failure'},
                 convertedAt: {S: ''},
             }
-        }).promise();        
+        }).promise();
 
         // send admin error email
         logger.info(`Sending admin error email`);
