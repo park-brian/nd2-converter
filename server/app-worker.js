@@ -67,19 +67,19 @@ async function processMessage(message) {
         return false;
     }
 
-    let params;
+    let logItem, params;
     const s3 = new AWS.S3();
+    const dynamodb = new AWS.DynamoDB();
     const email = nodemailer.createTransport({
         SES: new AWS.SES()
     });
+    const startTime = new Date().getTime();
 
     try {
         logger.info(`Processing S3 Event: ${JSON.stringify(message, null, 2)}`);
         const [record] = message.Records;
         const bucket = record.s3.bucket.name;
         const key = decodeURIComponent(record.s3.object.key).replace(/\+/g, ' ');
-        const startTime = new Date().getTime();
-
         // fetch s3 object metadata (all metadata keys are lowercase)
         logger.info(`Downloading file: ${key}`);
         const { Metadata : metadata } = await s3.headObject({
@@ -96,8 +96,6 @@ async function processMessage(message) {
             timestamp: record.eventTime
         };
 
-        console.log(params);
-
         const targetFormat = '.ome.tiff';
         const inputFileName = path.basename(key);
         const outputFileName = path.basename(key, path.extname(key)) + targetFormat;
@@ -107,7 +105,29 @@ async function processMessage(message) {
         const outputPath = path.dirname(key.replace(config.s3.inputPrefix, config.s3.outputPrefix)) + '/';
         const outputS3Key = `${outputPath}${outputFileName}`;
         fs.mkdirSync(processingFolder, {recursive: true});
-        
+
+        console.log(params);
+        logItem = {
+            id: {S: params.id},
+            email: {S: params.email},
+            tileSizeX: {S: String(params.tileSizeX)},
+            tileSizeY: {S: String(params.tileSizeY)},
+            pyramidResolutions: {S: String(params.pyramidResolutions)},
+            pyramidScale: {S: String(params.pyramidScale)},
+            uploadedAt: {S: record.eventTime},
+            bucket: {S: config.s3.bucket},
+            inputKey: {S: key},
+            outputKey: {S: outputS3Key},
+            fileSize: {N: String(record.s3.object.size)},
+            status: {S: 'In Progress'},
+        };
+
+        // log entry in dynamodb
+        await dynamodb.putItem({
+            TableName: config.dynamodb.table,
+            Item: logItem
+        }).promise();
+
         // write s3 object to local file
         await streamToFile(
             s3.getObject({
@@ -118,7 +138,7 @@ async function processMessage(message) {
         );
 
         logger.info(`Processing file: ${inputFileName}`);
-        convert({
+        const processOutput = convert({
             inputFile: inputFilePath,
             outputFile: outputFilePath,
             tileSizeX: params.tileSizeX,
@@ -162,12 +182,27 @@ async function processMessage(message) {
         }
 
         const elapsedTime = new Date().getTime() - startTime;
+
+        // log entry in dynamodb
+        await dynamodb.putItem({
+            TableName: config.dynamodb.table,
+            Item: {
+                ...logItem,
+                processOutput: {S: String(processOutput)},
+                elapsedTime: {S: String(elapsedTime / 1000)},
+                status: {S: 'Success'},
+                convertedAt: {S: new Date().toISOString()},
+            }
+        }).promise();
+
         logger.info(`Finished job (${params.id}) in ${elapsedTime / 1000}s`);
         return true;
     } catch (e) {
         console.log(e);
         // catch exceptions related to conversion (assume s3/ses configuration is valid)
         logger.error(e);
+
+        const elapsedTime = new Date().getTime() - startTime;
 
         // template variables
         const templateData = {
@@ -178,6 +213,19 @@ async function processMessage(message) {
             processOutput: e.stdout ? e.stdout.toString() : null,
             supportEmail: config.email.admin,
         };
+
+        // log entry in dynamodb
+        await dynamodb.putItem({
+            TableName: config.dynamodb.table,
+            Item: {
+                ...logItem,
+                processOutput: {S: String(templateData.processOutput)},
+                error: {S: String(e)},
+                elapsedTime: {S: String(elapsedTime / 1000)},
+                status: {S: 'Failure'},
+                convertedAt: {S: ''},
+            }
+        }).promise();        
 
         // send admin error email
         logger.info(`Sending admin error email`);
