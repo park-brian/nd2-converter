@@ -29,5 +29,8 @@
         "bucket": "bucketName",
         "inputPrefix": "path/to/input/",
         "outputPrefix": "path/to/output/"
+    },
+    "dynamodb": {
+        "table": ""
     }
 }
