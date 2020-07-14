@@ -10,6 +10,7 @@ function convert(options) {
         '-tiley', options.tileSizeY,
         '-noflat',
         '-overwrite',
+        '-bigtiff',
         '-pyramid-resolutions', options.pyramidResolutions,
         '-pyramid-scale', options.pyramidScale,
         options.inputFile,
