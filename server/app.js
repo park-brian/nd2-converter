@@ -47,6 +47,25 @@ app.get('/ping', (request, response) => {
     response.json(true);
 });
 
+// get job status
+app.get('/status', async (request, response) => {
+    const { Items } = await new AWS.DynamoDB().scan({
+        TableName: config.dynamodb.table,
+    }).promise();
+
+    // map dynamodb items to regular objects
+    const statusItems = Items.map(item => {
+        let statusItem = {};
+        for (let [key, value] of Object.entries(item)) {
+            let [valueKey] = Object.keys(value);
+            statusItem[key] = value[valueKey] === 'undefined' ? null : value[valueKey];
+        }
+        return statusItem;
+    });
+
+    response.json(statusItems);
+});
+
 // handle queue submission
 app.post('/submit', async (request, response) => {
     try {
