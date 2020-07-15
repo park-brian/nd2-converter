@@ -6,6 +6,11 @@ $(function () {
         $(this).modal('show');
     }
 
+    function pluralize(count, singular, plural) {
+        var pluralForm = plural || singular + 's';
+        return count === 1 ? singular : pluralForm;
+    }
+
     // initialize custom bootstrap file inputs
     bsCustomFileInput.init();
 
@@ -34,51 +39,71 @@ $(function () {
     // initialize job status table
     $.getJSON('status', function(data) {
         console.log('data', data);
+        var columns = [
+            {
+                data: 'inputKey',
+                title: 'Source File',
+                render: function(data, type, row) {
+                    var filename = data.split('/').pop();
+                    return (filename && row.fileSize > 0)
+                        ? filename
+                        : data;
+                }
+            },
+            {
+                data: 'fileSize',
+                title: 'File Size',
+                render: function(data, type, row) {
+                    if (type !== 'display' && type !== 'filter')
+                        return data;
+                    if (data < 1024) {
+                        return (+data) + ' b';
+                    } else if (data < 1024 * 1024) {
+                        return (+data/1024).toFixed(2) + ' KiB';
+                    } else if (data < 1024 * 1024 * 1024) {
+                        return (+data/1024/1024).toFixed(2) + ' MiB';
+                    } else {
+                        return (+data/1024/1024/1024).toFixed(2) + ' GiB';
+                    }
+                }
+            },
+            {
+                data: 'elapsedTime',
+                title: 'Conversion Time',
+                render: function(data, type) {
+                    if (type !== 'display' && type !== 'filter')
+                        return data;
+
+                    var minutes = Math.floor(data / 60);
+                    var seconds = (data % 60).toFixed(2);
+
+                    return [
+                        data > 60 ? (minutes + ' ' + pluralize(minutes, 'min', 'mins')) : null,
+                        seconds + ' ' + pluralize(seconds, 'sec', 'secs'),
+                    ].filter(Boolean).join(', ');
+                }
+            },
+            {
+                data: 'status',
+                title: 'Status',
+
+                render: function(data, type, row) {
+                    if (type !== 'display' && type !== 'filter')
+                        return data;
+                    return $('<span/>').text(data).attr('title', row.error).prop('outerHTML')
+                }
+            },
+        ];
         
         $('#job-status-table').dataTable({
             data: data,
-            columns: [
-                {
-                    data: 'status',
-                    title: 'Status',
-                },
-                {
-                    data: 'inputKey',
-                    title: 'Input Key',
-                },
-                {
-                    data: 'outputKey',
-                    title: 'Output Key',
-                },
-                {
-                    data: 'elapsedTime',
-                    title: 'Elapsed Time (s)',
-                },
-                {
-                    data: 'fileSize',
-                    title: 'File Size',
-                    render: function(data, type, row) {
-                        if (type !== 'display' && type !== 'filter')
-                            return data;
-                        if (data < 1024) {
-                            return (+data) + ' b';
-                        } else if (data < 1024 * 1024) {
-                            return (+data/1024).toFixed(2) + ' KiB';
-                        } else if (data < 1024 * 1024 * 1024) {
-                            return (+data/1024/1024).toFixed(2) + ' MiB';
-                        } else {
-                            return (+data/1024/1024/1024).toFixed(2) + ' GiB';
-                        }
-                    }
-                },
-                {
-                    data: 'convertedAt',
-                    title: 'Converted At',
-                },
-            ],
+            columns: columns,
             dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
             "<'table-responsive mb-3'tr>" +
             "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+            pageLength: 25,
+            lengthMenu: [25, 50, 100],
+            order: [[3, 'asc']]
         })
         $('#status').DataTable();
     })
