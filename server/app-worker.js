@@ -109,7 +109,7 @@ async function processMessage(message) {
         console.log(params);
         logItem = {
             id: {S: String(params.id)},
-            email: {S: String(params.email)},
+            email: {S: String(params.email || '')},
             tileSizeX: {S: String(params.tileSizeX)},
             tileSizeY: {S: String(params.tileSizeY)},
             pyramidResolutions: {S: String(params.pyramidResolutions)},
