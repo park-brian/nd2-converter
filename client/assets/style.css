@@ -15,3 +15,11 @@
 .text-muted {
     color: #595959 !important;
 }
+
+.table td, .table th {
+    white-space: nowrap;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0,0,0,.02);
+}

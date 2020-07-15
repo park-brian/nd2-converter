@@ -4,115 +4,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OME-TIFF pyramidal format converter</title>
+    <title>OME-TIFF format converter</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+    <!-- <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css"> -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" href="assets/style.css">
     <link rel="shortcut icon" href="assets/favicon.ico" type="image/vnd.microsoft.icon" />
 </head>
 
 <body>
-    <main class="container my-5">
-        <form class="card shadow" action="submit" enctype="multipart/form-data" method="post" onsubmit-modal="#modal">
-            <div class="card-header bg-primary text-white">
-                <h1 class="h5 mb-0">OME-TIFF pyramidal format converter</h1>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <span class="navbar-brand mb-0 h1">OME-TIFF Format Converter</span>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-links"
+            aria-controls="navbar-links" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbar-links">
+            <!-- Navigation Links -->
+            <div class="navbar-nav nav" role="tablist">
+                <a class="nav-item nav-link active" id="nav-submit-tab" href="#submit-tab" role="tab" data-toggle="tab"
+                    aria-controls="submit-tab" aria-selected="true">Submit File</a>
+                <a class="nav-item nav-link" id="nav-status-tab" href="#status-tab" role="tab" data-toggle="tab"
+                    aria-controls="status-tab" aria-selected="false">Job Status</a>
             </div>
-            <div class="card-body">
+        </div>
+    </nav>
 
-                <div class="form-group mb-4">
-                    <label>ND2 Image</label>
-                    <div class="custom-file">
-                        <input type="file" class="custom-file-input" id="inputFile" name="inputFile"
-                            aria-describedby="inputFileHelp" required>
-                        <label class="custom-file-label" for="inputFile">No ND2 image selected</label>
+    <main class="tab-content container my-5" id="nav-tab-content">
+        <!-- Submit File Tab -->
+        <div class="tab-pane show active" id="submit-tab" role="tabpanel" aria-labelledby="nav-submit-tab">
+            <form class="card shadow" action="submit" enctype="multipart/form-data" method="post"
+                onsubmit-modal="#modal">
+                <div class="card-header bg-primary text-white">
+                    <h1 class="h5 mb-0">Submit File</h1>
+                </div>
+                <div class="card-body">
+
+                    <div class="form-group mb-4">
+                        <label>Image</label>
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input" id="inputFile" name="inputFile"
+                                aria-describedby="inputFileHelp" required>
+                            <label class="custom-file-label" for="inputFile">No image selected</label>
+                        </div>
+                        <small id="inputFileHelp" class="form-text text-muted">
+                            Select image file to convert.
+                        </small>
                     </div>
-                    <small id="inputFileHelp" class="form-text text-muted">
-                        Select ND2 image file to convert. 
-                    </small>
-                </div>
 
-                <div class="form-group mb-4">
-                    <label for="tileSizeX">Tile Size X</label>
-                    <input type="number" class="form-control" id="tileSizeX" name="tileSizeX"
-                        aria-describedby="tileSizeXHelp" value="512" min="0" step="1" required>
-                    <small id="tileSizeXHelp" class="form-text text-muted">
-                        All images larger than 4096×4096 will be saved as a set of tiles if the output format supports
-                        doing so. The width in pixels of each tile. Values between 128 and 4096 only.
-                    </small>
-                </div>
-
-                <div class="form-group mb-4">
-                    <label for="tileSizeY">Tile Size Y</label>
-                    <input type="number" class="form-control" id="tileSizeY" name="tileSizeY"
-                        aria-describedby="tileSizeYHelp" value="512" min="0" step="1" required>
-                    <small id="tileSizeYHelp" class="form-text text-muted">
-                        All images larger than 4096×4096 will be saved as a set of tiles if the output format supports
-                        doing so. The height in pixels of each tile. Values between 128 and 4096 only.
-                    </small>
-                </div>
-
-                <div class="form-group mb-4">
-                    <label for="pyramidResolutions">Pyramid Resolutions</label>
-                    <input type="number" class="form-control" id="pyramidResolutions" name="pyramidResolutions"
-                        aria-describedby="pyramidResolutionsHelp" value="4" min="0" step="1" required>
-                    <small id="pyramidResolutionsHelp" class="form-text text-muted" required>
-                        Sets the number of expected resolutions in the output file for each series. If the target number
-                        of
-                        resolutions is greater than the actual number of sub-resolutions present in the input file,
-                        additional
-                        pyramidal levels will be calculated using the downsampling factor specified by pyramid-scale.
-                    </small>
-                </div>
-
-                <div class="form-group mb-4">
-                    <label for="pyramidScale">Pyramid Scale</label>
-                    <input type="number" class="form-control" id="pyramidScale" name="pyramidScale"
-                        aria-describedby="pyramidScaleHelp" value="3" min="0" step="1" required>
-                    <small id="pyramidScaleHelp" class="form-text text-muted" required>
-                        If the target number of resolutions is greater than the actual number of sub-resolutions present
-                        in the input file, additional pyramidal levels will be calculated using the downsampling factor
-                        specified by the pyramid-scale option.
-                    </small>
-                </div>
-
-                <div class="form-group">
-                    <label for="email">Email address</label>
-                    <input type="email" name="email" class="form-control" id="email" aria-describedby="emailHelp"
-                        required>
-                    <small id="emailHelp" class="form-text text-muted">
-                        Specify the email address at which you wish to receive your results.
-                    </small>
-                </div>
-
-            </div>
-
-            <div class="card-footer bg-white border-0">
-                <button type="submit" class="btn btn-primary btn-block font-weight-bold">Submit</button>
-            </div>
-        </form>
-
-        <!-- Modal -->
-        <div class="modal fade" id="modal" tabindex="-1" role="dialog" aria-labelledby="modal"
-            aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2 class="h5 modal-title"></h2>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
+                    <div class="form-group mb-4">
+                        <label for="tileSizeX">Tile Size X</label>
+                        <input type="number" class="form-control" id="tileSizeX" name="tileSizeX"
+                            aria-describedby="tileSizeXHelp" value="512" min="0" step="1" required>
+                        <small id="tileSizeXHelp" class="form-text text-muted">
+                            All images larger than 4096×4096 will be saved as a set of tiles if the output format
+                            supports
+                            doing so. The width in pixels of each tile. Values between 128 and 4096 only.
+                        </small>
                     </div>
-                    <div class="modal-body"></div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+
+                    <div class="form-group mb-4">
+                        <label for="tileSizeY">Tile Size Y</label>
+                        <input type="number" class="form-control" id="tileSizeY" name="tileSizeY"
+                            aria-describedby="tileSizeYHelp" value="512" min="0" step="1" required>
+                        <small id="tileSizeYHelp" class="form-text text-muted">
+                            All images larger than 4096×4096 will be saved as a set of tiles if the output format
+                            supports
+                            doing so. The height in pixels of each tile. Values between 128 and 4096 only.
+                        </small>
                     </div>
+
+                    <div class="form-group mb-4">
+                        <label for="pyramidResolutions">Pyramid Resolutions</label>
+                        <input type="number" class="form-control" id="pyramidResolutions" name="pyramidResolutions"
+                            aria-describedby="pyramidResolutionsHelp" value="4" min="0" step="1" required>
+                        <small id="pyramidResolutionsHelp" class="form-text text-muted" required>
+                            Sets the number of expected resolutions in the output file for each series. If the target
+                            number
+                            of
+                            resolutions is greater than the actual number of sub-resolutions present in the input file,
+                            additional
+                            pyramidal levels will be calculated using the downsampling factor specified by
+                            pyramid-scale.
+                        </small>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label for="pyramidScale">Pyramid Scale</label>
+                        <input type="number" class="form-control" id="pyramidScale" name="pyramidScale"
+                            aria-describedby="pyramidScaleHelp" value="3" min="0" step="1" required>
+                        <small id="pyramidScaleHelp" class="form-text text-muted" required>
+                            If the target number of resolutions is greater than the actual number of sub-resolutions
+                            present
+                            in the input file, additional pyramidal levels will be calculated using the downsampling
+                            factor
+                            specified by the pyramid-scale option.
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email address</label>
+                        <input type="email" name="email" class="form-control" id="email" aria-describedby="emailHelp"
+                            required>
+                        <small id="emailHelp" class="form-text text-muted">
+                            Specify the email address at which you wish to receive your results.
+                        </small>
+                    </div>
+
+                </div>
+
+                <div class="card-footer bg-white border-0">
+                    <button type="submit" class="btn btn-primary btn-block font-weight-bold">Submit</button>
+                </div>
+            </form>
+
+        </div>
+
+        <!-- Job Status Tab -->
+        <div class="tab-pane" id="status-tab" role="tabpanel" aria-labelledby="nav-status-tab">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h1 class="h5 mb-0">Job Status</h1>
+                </div>
+                <div class="card-body">
+                    <table id="job-status-table" class="table table-striped table-bordered table-hover table-sm border" style="width: 100%; max-width: 100%;"></table>
                 </div>
             </div>
         </div>
     </main>
 
+    <!-- Modal -->
+    <div class="modal fade" id="modal" tabindex="-1" role="dialog" aria-labelledby="modal" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="h5 modal-title"></h2>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/bs-custom-file-input.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
     <script src="assets/script.js"></script>
 </body>
 
